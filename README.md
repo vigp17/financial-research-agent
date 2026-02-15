@@ -1,6 +1,6 @@
 # 🏦 Financial Research Agent
 
-An AI-powered financial research assistant built with Claude's tool use (function calling) capability. The agent autonomously gathers market data, computes technical indicators, detects market regimes using a Hidden Markov Model, and synthesizes everything into clear research analysis.
+An AI-powered financial research assistant built with Claude's tool use (function calling) capability. The agent autonomously gathers market data, computes technical indicators, detects market regimes using a Hidden Markov Model, fetches recent news, and synthesizes everything into clear research analysis.
 
 ## Architecture
 
@@ -22,6 +22,9 @@ User Question
 │  ┌───────────┐ ┌───────────────────────┐ │
 │  │Technicals │ │ HMM Regime Detection  │ │
 │  └───────────┘ └───────────────────────┘ │
+│  ┌───────────────────────────────────────┐ │
+│  │         News & Sentiment              │ │
+│  └───────────────────────────────────────┘ │
 └──────────────────────────────────────────┘
        │                    │
        ▼                    ▼
@@ -29,7 +32,7 @@ User Question
                    (market-regime-detection)
 ```
 
-**The Agentic Loop**: Claude doesn't just answer in one shot. It can make multiple tool calls in sequence — fetching company info, price data, technical indicators, and market regime — before synthesizing everything into a final analysis. This multi-step reasoning is what makes it an "agent."
+**The Agentic Loop**: Claude doesn't just answer in one shot. It can make multiple tool calls in sequence — fetching company info, price data, technical indicators, market regime, and news — before synthesizing everything into a final analysis. This multi-step reasoning is what makes it an "agent."
 
 **HMM Integration**: The agent connects to a [separately trained Hidden Markov Model](https://github.com/vigp17/market-regime-detection) that identifies 5 market regimes (Strong Bull, Calm Bull, Neutral, Bear/High Vol, Crisis) from 20 years of S&P 500 data. This gives every analysis real macro context.
 
@@ -57,69 +60,73 @@ python agent.py
 
 > **Note**: For HMM regime detection, you also need the [market-regime-detection](https://github.com/vigp17/market-regime-detection) project set up locally. Update the `HMM_PROJECT_PATH` in `tools/regime_tool.py` to point to your local copy. The agent works without it, but regime context won't be available.
 
-## Example: Analyzing AAPL
+## Example: Analyzing NVDA
 
 ```
-You: Analyze AAPL
+You: Analyze NVDA
 
 🔄 Sending request to Claude...
-🔧 Tool call [1]: get_company_info({"ticker": "AAPL"})
-✓ Got result (827 chars)
-🔧 Tool call [1]: get_stock_data({"ticker": "AAPL", "period": "1y"})
-✓ Got result (883 chars)
-🔧 Tool call [1]: get_technical_indicators({"ticker": "AAPL"})
-✓ Got result (364 chars)
+🔧 Tool call [1]: get_stock_data({"ticker": "NVDA", "period": "6mo"})
+✓ Got result (896 chars)
+🔧 Tool call [1]: get_company_info({"ticker": "NVDA"})
+✓ Got result (835 chars)
+🔧 Tool call [1]: get_technical_indicators({"ticker": "NVDA"})
+✓ Got result (340 chars)
+🔧 Tool call [1]: get_stock_news({"ticker": "NVDA"})
+✓ Got result (3467 chars)
 🔧 Tool call [1]: detect_market_regime({"ticker": "SPY"})
 ✓ Got result (1475 chars)
 🔄 Sending tool results back to Claude...
 ```
 
-The agent autonomously called **all 4 tools** — including the HMM regime detector — then synthesized the results:
+The agent autonomously called **all 5 tools** — including news and HMM regime detection — then synthesized the results:
 
 ```
 📊 Analysis
 ┌──────────────────────────────────────────────────────────────────────┐
-│                    Apple Inc. (AAPL) Analysis                        │
+│                       NVIDIA (NVDA) Analysis                         │
 │                                                                      │
 │  Executive Summary                                                   │
-│  Apple is showing mixed technical signals in the current             │
-│  "Calm Bull" market environment. While the stock has gained 5%       │
-│  over the past year and remains above its 200-day moving average,    │
-│  recent price action suggests some near-term weakness.               │
+│  NVIDIA continues to demonstrate strong fundamentals despite         │
+│  recent volatility, trading at $182.81 with a $4.45 trillion         │
+│  market cap. The current "Calm Bull" market regime provides a        │
+│  supportive backdrop for growth stocks.                              │
 │                                                                      │
-│  Key Fundamentals                                                    │
-│  • Market Cap: $3.76 trillion                                        │
-│  • P/E Ratio: 32.4 | Forward P/E: 27.5                              │
-│  • Dividend Yield: 0.41%                                             │
-│  • 52-Week Range: $169.21 - $288.62                                  │
-│  • Analyst Consensus: Buy                                            │
+│  Key Metrics                                                         │
+│  • Market Cap: $4.45 trillion                                        │
+│  • P/E Ratio: 45.2 | Forward P/E: 23.6                              │
+│  • 52-Week Range: $86.62 - $212.19                                   │
+│  • Analyst Consensus: Strong Buy                                     │
+│  • Volatility: 35% annualized                                        │
 │                                                                      │
 │  Technical Analysis                                                  │
-│  • Below SMA-20 ($262.09): Short-term weakness                       │
-│  • Below SMA-50 ($267.25): Medium-term weakness                      │
-│  • Above SMA-200 ($239.60): Long-term uptrend intact                 │
-│  • RSI: 50.56 (neutral)                                              │
-│  • MACD: Bearish crossover — short-term caution                      │
+│  • Below SMA-20 ($185.30): Short-term weakness                       │
+│  • Above SMA-200 ($171.66): Long-term uptrend intact                 │
+│  • RSI: 46.68 (neutral)                                              │
+│  • MACD: Slightly positive, bullish histogram                        │
 │                                                                      │
 │  Market Regime Context (HMM Model)                                   │
 │  The broader market is in a "Calm Bull" regime:                      │
 │  • 100% model confidence                                             │
 │  • 10/10 days stable in current regime                               │
 │  • 97% probability of remaining in Calm Bull                         │
-│  • 0% crisis probability                                             │
+│  • Generally favorable for growth stocks like NVIDIA                 │
 │                                                                      │
-│  This supportive macro backdrop suggests any Apple weakness          │
-│  may be company-specific rather than systemic.                       │
+│  News & Catalysts                                                    │
+│  • Positive: Continued AI infrastructure demand                      │
+│  • Concerns: Data center buildout costs pressuring margins           │
+│  • Broader Theme: AI sell-off creating near-term volatility,         │
+│    but underlying demand story remains intact                        │
 │                                                                      │
 │  Balanced Assessment                                                 │
-│  Apple appears to be in a healthy consolidation phase within a       │
-│  longer-term uptrend. The recent pullback may present a better       │
-│  entry point, though short-term traders should watch for a break     │
-│  back above $262 (20-day SMA) for confirmation.                      │
+│  NVIDIA remains fundamentally strong but is experiencing             │
+│  consolidation after massive gains. The forward P/E suggests         │
+│  strong earnings growth ahead. Near-term volatility should be        │
+│  expected given the stock's high beta and AI sector rotation.        │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-> The agent decided which tools to call, in what order, without any hardcoded logic — and wove the HMM regime context directly into its investment analysis.
+> The agent decided which tools to call, in what order, without any hardcoded logic — and wove fundamentals, technicals, regime context, and news into a unified analysis.
 
 ## Project Structure
 
@@ -129,7 +136,8 @@ financial-research-agent/
 ├── tools/
 │   ├── __init__.py       # Tool registry
 │   ├── market_tools.py   # Stock data, company info, technicals
-│   └── regime_tool.py    # HMM regime detection integration
+│   ├── regime_tool.py    # HMM regime detection integration
+│   └── news_tool.py      # News & sentiment
 ├── requirements.txt
 └── README.md
 ```
@@ -184,11 +192,12 @@ Agent: [contextual follow-up using previous data]
 | `get_company_info` | Fundamentals: P/E, market cap, sector, summary | Yahoo Finance |
 | `get_technical_indicators` | SMA, RSI, MACD, Bollinger Bands, trend signals | Computed from price data |
 | `detect_market_regime` | Current market regime, confidence, stability, transitions | Pre-trained HMM model |
+| `get_stock_news` | Recent headlines, publishers, summaries | Yahoo Finance |
 
 ## Next Steps (Planned Enhancements)
 
 - [x] ~~**HMM Integration**: Connect market regime detection model as a tool~~
-- [ ] **News Tool**: Fetch recent news articles for sentiment context
+- [x] ~~**News Tool**: Fetch recent news articles for sentiment context~~
 - [ ] **Comparison Tool**: Side-by-side stock comparison
 - [ ] **Output Export**: Save analyses as PDF/Markdown reports
 - [ ] **Streaming**: Stream Claude's response in real-time
