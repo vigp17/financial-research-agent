@@ -33,7 +33,8 @@ User Question
 ## Quick Start
 
 ```bash
-# 1. Clone/navigate to the project
+# 1. Clone the repo
+git clone https://github.com/YOUR_USERNAME/financial-research-agent.git
 cd financial-research-agent
 
 # 2. Create a virtual environment
@@ -44,38 +45,64 @@ source venv/bin/activate
 pip install -r requirements.txt
 
 # 4. Set up your API key
-cp .env.example .env
-# Edit .env and add your Anthropic API key
-# Get one at: https://console.anthropic.com/settings/keys
+echo "ANTHROPIC_API_KEY=your-key-here" > .env
+# Get your key at: https://console.anthropic.com/settings/keys
 
 # 5. Run the agent
 python agent.py
 ```
 
-## Example Usage
+## Example: Analyzing AAPL
 
 ```
-You: Analyze NVDA
+You: Analyze AAPL
 
-🔧 Tool call [1]: get_company_info({"ticker": "NVDA"})
-✓ Got result (450 chars)
-🔧 Tool call [2]: get_stock_data({"ticker": "NVDA", "period": "3mo"})
-✓ Got result (820 chars)
-🔧 Tool call [3]: get_technical_indicators({"ticker": "NVDA"})
-✓ Got result (380 chars)
+🔄 Sending request to Claude...
+🔧 Tool call [1]: get_company_info({"ticker": "AAPL"})
+✓ Got result (827 chars)
+🔧 Tool call [1]: get_stock_data({"ticker": "AAPL", "period": "1y"})
+✓ Got result (883 chars)
+🔧 Tool call [1]: get_technical_indicators({"ticker": "AAPL"})
+✓ Got result (364 chars)
+🔄 Sending tool results back to Claude...
+```
 
+The agent autonomously decided to call **all 3 tools**, then synthesized the results:
+
+```
 📊 Analysis
-┌─────────────────────────────────────────────┐
-│ ## NVIDIA (NVDA) — Research Summary          │
-│                                              │
-│ **Executive Summary**                        │
-│ NVIDIA continues to dominate the AI chip     │
-│ market with strong momentum...               │
-│                                              │
-│ **Key Metrics**                              │
-│ ...                                          │
-└─────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│                    Apple Inc. (AAPL) Analysis                        │
+│                                                                      │
+│  Executive Summary                                                   │
+│  Apple maintains its position as one of the world's most valuable    │
+│  companies with a market cap of $3.76 trillion. Currently trading    │
+│  at $255.78, the stock is showing mixed technical signals but        │
+│  remains above its long-term trend line.                             │
+│                                                                      │
+│  Key Fundamental Metrics                                             │
+│  • Market Cap: $3.76 trillion                                        │
+│  • P/E Ratio: 32.4                                                   │
+│  • Forward P/E: 27.5                                                 │
+│  • Dividend Yield: 0.41%                                             │
+│  • 52-Week Range: $169.21 - $288.62                                  │
+│                                                                      │
+│  Technical Analysis                                                  │
+│  • Below SMA-20 ($262.09): Short-term bearish pressure               │
+│  • Below SMA-50 ($267.25): Medium-term weakness                      │
+│  • Above SMA-200 ($239.60): Long-term uptrend intact                 │
+│  • RSI: 50.6 (neutral territory)                                     │
+│  • MACD: Bearish crossover — potential short-term weakness            │
+│                                                                      │
+│  Balanced Assessment                                                 │
+│  AAPL appears to be in a consolidation phase after significant       │
+│  gains. While short-term technicals suggest caution, the company's   │
+│  fundamental strength and position above the 200-day moving average  │
+│  support a longer-term positive outlook.                             │
+└──────────────────────────────────────────────────────────────────────┘
 ```
+
+> The agent decided which tools to call, in what order, without any hardcoded logic — this is the power of agentic tool use.
 
 ## Project Structure
 
@@ -86,7 +113,6 @@ financial-research-agent/
 │   ├── __init__.py
 │   └── market_tools.py   # Tool schemas + handler functions
 ├── requirements.txt
-├── .env.example
 └── README.md
 ```
 
@@ -100,7 +126,7 @@ Claude's tool use lets you define functions that Claude can call. You provide:
 Claude decides *when* and *which* tools to call based on the user's question.
 
 ### The Agent Loop
-```
+```python
 while not done:
     response = claude.create(messages, tools)
     if response.wants_tool:
@@ -118,6 +144,14 @@ Agent: [detailed analysis]
 You: How does its P/E compare to the sector average?
 Agent: [contextual follow-up using previous data]
 ```
+
+## Available Tools
+
+| Tool | Description | Data Source |
+|------|-------------|------------|
+| `get_stock_data` | Historical OHLCV data, returns, volatility | Yahoo Finance |
+| `get_company_info` | Fundamentals: P/E, market cap, sector, summary | Yahoo Finance |
+| `get_technical_indicators` | SMA, RSI, MACD, Bollinger Bands, trend signals | Computed from price data |
 
 ## Next Steps (Planned Enhancements)
 
